@@ -13,7 +13,8 @@ df = pd.read_csv('dataset/cardio_train.csv', sep=";")
 df['gender'] = df['gender'].map({1: 'women', 2: 'men'})
 
 # age is given in days -> convert to years
-df['age'] = round(df.age / 360, 0)
+df['age'] = round(df.age / 360)
+df['age'] = df.age.astype(int)
 
 print(df['age'])
 # ======================================================================================================================
@@ -26,24 +27,28 @@ plt.title('Age distribution per target label (cardio)')
 plt.show()
 
 
-'''
 sns.catplot(kind='count', data=df, x='age', col="cholesterol", hue='cardio', order=df['age'].sort_values().unique())
-plt.title('Variation of age for each cardio - target class')
+# plt.title('Distribution of age for each target class (cardio) per cholesterol levels')
 plt.show()
-'''
+
 
 sns.catplot(kind='count', data=df, x='age', col="active", hue='cardio', order=df['age'].sort_values().unique())
-plt.title('Variation of age for each target class (cardio) per individual activity')
+# plt.title('Distribution of age for each target class (cardio) per individual activity')
 plt.show()
 
 # distribution of cardio vs age
 sns.countplot(x="age", hue="cardio", data=df, order=df['age'].sort_values().unique())
-plt.title('Variation of age for each target class (cardio)')
+plt.title('Distribution of age for each target class (cardio)')
 plt.show()
 
 # ======================================================================================================================
 
 # barplot of age vs gender with hue = cardio
-sns.catplot(kind='bar', data=df, y='age', x='gender', hue='cardio')
+sns.boxplot(
+    data=df,
+    x='gender',
+    y='age',
+    hue='cardio',
+    color='red')
 plt.title('Distribution of age vs gender with the target class (cardio)')
 plt.show()
