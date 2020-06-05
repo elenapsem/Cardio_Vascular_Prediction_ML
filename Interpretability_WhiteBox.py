@@ -7,7 +7,6 @@
 #!pip install eli5
 #!pip install shap
 #!pip install pdpbox
-#!pip install xgboost 
 
 # imports
 import pandas as pd
@@ -176,13 +175,12 @@ plt.show()
 
 # SHAP for evaluating variable importance
 
-
 data= shap.kmeans(x_train, 3) 
 explainer = shap.KernelExplainer(model.predict, data)
 shap_values = explainer.shap_values(x_train, nsamples=100)
 
 # show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
 shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
-plt.savefig('SHAPfeature_LR.png', bbox_inches="tight")
+plt.savefig('SHAP_feature.png', bbox_inches="tight")
 shap.summary_plot(shap_values, x_train, show=False, feature_names=feature_names)
-plt.savefig('SHAPSummary_LR.png', bbox_inches="tight")
+plt.savefig('SHAP_Summary.png', bbox_inches="tight")
