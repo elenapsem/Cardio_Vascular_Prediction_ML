@@ -167,7 +167,7 @@ for name, classifier in predictors:
     #feature importance with ELI5
     perm = PermutationImportance(model).fit(x_test, y_test)
     eli5.show_weights(perm, feature_names = feature_names.tolist())
- 
+    display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
     #eli5.show_prediction(model, x_test[i], show_feature_values=True, feature_names=feature_names.tolist())
     #display( eli5.show_prediction(model, x_test[i], show_feature_values=True, feature_names=feature_names.tolist()))
  
