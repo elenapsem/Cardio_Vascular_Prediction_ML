@@ -188,7 +188,7 @@ for name, classifier in predictors:
         #feature active
         pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='active')
         display(pdp.pdp_plot(pdp_goals, 'active'))
-        plt?show()
+        plt.show()
         
         
     # SHAP for evaluating variable importance
