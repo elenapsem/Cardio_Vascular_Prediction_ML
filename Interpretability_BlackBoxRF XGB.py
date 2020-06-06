@@ -94,16 +94,13 @@ def plot_tree(depth):
     print("Fidelity",accuracy_score(y_pred, estimator.predict(x_test)))
     print("Accuracy in new data")
     print(accuracy_score(y_test, estimator.predict(x_test)))
-    
     display(SVG(graph.pipe(format='svg')))
-    
     return estimator
 
 
 # Classifiers XGB / RandomForest
 
 # RandomForestClassifier
-# max_features: number of features that is randomly sampled for each split point
 
 rfc = RandomForestClassifier(n_estimators=100, criterion='gini', max_depth=None)
 xgb = XGBClassifier()
@@ -131,7 +128,7 @@ for name, classifier in predictors:
     display(inter)
     
     # ======================================================================================================================
-    # Different Approches deployed to check locally and gloabally
+    # Different Approches deployed locally and gloabally 
 
     i = np.random.randint(0, x_test.shape[0]) # test for random instance
     
