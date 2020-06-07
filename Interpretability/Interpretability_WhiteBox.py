@@ -1,4 +1,5 @@
 # Interpreatability for cardio vascular dataset
+# White Box model interpretation
 # ======================================================================================================================
 # Credits for Logistic Regression Model: https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
 
@@ -36,6 +37,7 @@ from eli5.sklearn import PermutationImportance
 # SHAP
 import shap
 
+
 # ======================================================================================================================
 # read and preprocess data
 
@@ -57,11 +59,13 @@ feature_names = df.columns.drop(['cardio'])
 x_train, x_test, y_train, y_test = train_test_split(X, y, test_size=0.25,random_state=0)
 
 
+i = np.random.randint(0, x_test.shape[0]) # test for random instance
+
 # ======================================================================================================================
 
 # if a feature has 5 or less unique values then treat it as categorical
 numerical_features= ["age", "height", "weight", "ap_hi", "ap_lo"]
-categorical_features = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
+# categorical_features = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
 # if a feature has 5 or less unique values then treat it as categorical
 categorical_features = np.argwhere(np.array([len(set(x_train[:,x])) for x in range(x_train.shape[1])]) <= 5).flatten()
 
@@ -70,11 +74,10 @@ categorical_features = np.argwhere(np.array([len(set(x_train[:,x])) for x in ran
 # White Box Models interpretation
 # ====================================================================================================================== 
 
-#LogisticRegression
+# LogisticRegression
 # reuse the https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
 
 model = LogisticRegression(solver="newton-cg",penalty='l2',max_iter=1000,C=100,random_state=0)
-#lin_model = LogisticRegression(solver="liblinear",penalty='l1',max_iter=1000,C=10,random_state=0)
 model.fit(x_train, y_train)
 predicted_train = model.predict(x_train)
 predicted_test = model.predict(x_test)
@@ -102,7 +105,7 @@ plt.xticks(rotation=90)
 plt.show()
 
 
-def plot_sensor(instance=0):
+def plot_sensor(instance):
   random_instance = x_test[instance]
   print("Original Class:",y_test[instance],"Predicted Class:",predicted_test[instance],"with probability of", predicted_proba_test[instance][predicted_test[instance]])
   weights = model.coef_
@@ -124,7 +127,7 @@ def plot_sensor(instance=0):
   plt.xticks(rotation=90)
   plt.show()
               
-inter=interactive(plot_sensor, instance=(0,9))
+inter=interactive(plot_sensor, instance=i)
 display(inter)
     
 
@@ -135,14 +138,8 @@ display(inter)
               
 # Local models
 
-#feature importance with ELI5
-perm = PermutationImportance(model).fit(x_test, y_test)
-eli5.show_weights(perm, feature_names = feature_names.tolist())
-display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
-
 # LIME
 
-i = np.random.randint(0, x_test.shape[0])
 explainer = lime.lime_tabular.LimeTabularExplainer(x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
 exp = explainer.explain_instance(x_test[i], model.predict_proba, num_features=5)
 exp.show_in_notebook(show_table=True, show_all=False)
@@ -152,9 +149,15 @@ exp.as_pyplot_figure();
 fig = exp.as_pyplot_figure();
 
 
-# Global models
+# feature importance 
+
+#feature importance with ELI5
+perm = PermutationImportance(model).fit(x_test, y_test)
+eli5.show_weights(perm, feature_names = feature_names.tolist())
+display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 
 #feature importance with the partial dependence plot PDP 
+
 
 #feature cholesterol
 pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='cholesterol')
@@ -165,7 +168,6 @@ plt.show()
 pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='ap_hi')
 display(pdp.pdp_plot(pdp_goals, 'ap_hi'))
 plt.show()
-
 
 #feature active
 pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='active')
