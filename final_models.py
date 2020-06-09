@@ -25,6 +25,49 @@ from sklearn.metrics import roc_auc_score, confusion_matrix, make_scorer, precis
 
 
 # ======================================================================================================================
+# INTERPRETABILITY
+# ======================================================================================================================
+
+# installations, if not already there
+#!pip install lime
+#!pip install eli5
+#!pip install shap
+#!pip install pdpbox
+#!pip install xgboost 
+# imports
+import xgboost
+from sklearn import datasets,model_selection
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from xgboost import XGBClassifier, plot_importance
+from IPython.display import SVG
+from IPython.display import display
+from ipywidgets import interactive
+from graphviz import Source
+import os
+os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
+import graphviz
+
+# PDP
+from pdpbox import pdp, get_dataset, info_plots
+# LIME
+import lime.lime_tabular
+from lime.explanation import Explanation
+# ELI5
+import eli5
+from eli5.sklearn import PermutationImportance
+# SHAP
+import shap
+
+%matplotlib inline
+
+# ======================================================================================================================
+# INTERPRETABILITY
+# ======================================================================================================================
+
+
+
+# ======================================================================================================================
 
 random_state = 27  # define random state for re-producability
 
@@ -37,6 +80,8 @@ df.drop('id', 1, inplace=True)  # delete column 'id'
 df.replace("", float("NaN"), inplace=True)  # convert empty field to NaN
 df.dropna(inplace=True)  # drop NaN rows
 df.reset_index(drop=True, inplace=True)
+
+df['age'] = np.floor(df['age'] / 365.25)  # convert age
 
 X = df.iloc[:, :-1]  # .values  # convert to numpy array
 y = df.iloc[:, -1]  # .values  # convert to numpy array
@@ -245,10 +290,90 @@ plt.show()
 # INSERT INTERPRETABILITY
 # ======================================================================================================================
 
+# ====================================================================================================================== 
+# Black Box Models interpretation
+# ====================================================================================================================== 
+
+# reuse the https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
+# ======================================================================================================================
+# Plot Tree Function
+# ======================================================================================================================
+
+def plot_tree(depth):
+    estimator = DecisionTreeClassifier(random_state = 0,criterion = 'gini', max_depth = depth)
+    estimator.fit(new_x_train, new_y_train)
+    graph = Source(export_graphviz(estimator, out_file=None, feature_names=feature_names, filled = True))
+    print("Fidelity",accuracy_score(y_pred, estimator.predict(x_test_scaled)))
+    print("Accuracy in new data")
+    print(accuracy_score(y_test, estimator.predict(x_test_scaled)))
+    display(SVG(graph.pipe(format='svg')))
+    return estimator
 
 
+i = np.random.randint(0, x_test.shape[0]) # test for random instance
+
+#under_over_x_train = under_over_x_train.values
+x_test = x_test.values
+#under_over_y_train = under_over_y_train.values
+y_test = y_test.values
 
 
+# assign features name
+feature_names = df.columns.drop(['cardio'])
+
+numerical_features= ["age", "height", "weight", "ap_hi", "ap_lo"]
+# categorical_features = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
+# if a feature has 5 or less unique values then treat it as categorical
+categorical_features = np.argwhere(np.array([len(set(under_over_x_train[:,x])) for x in range(under_over_x_train.shape[1])]) <= 5).flatten()
+
+classifier= model_1
+
+new_x_train = under_over_x_train
+new_y_train = classifier.predict(under_over_x_train)
+    
+print("Decision Tree Explanator")
+    
+inter=interactive(plot_tree,depth=(1,5))
+display(inter)
+    
+# ======================================================================================================================
+# Different Approches deployed to check locally and globally
+# ======================================================================================================================
+
+# Local models
+  
+# LIME
+explainer = lime.lime_tabular.LimeTabularExplainer(under_over_x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
+exp = explainer.explain_instance(x_test_scaled[i], classifier.predict_proba, num_features=5)
+exp.show_in_notebook(show_table=True, show_all=False)
+exp.as_pyplot_figure
+    
+# features importance 
+    
+# features importance model built-in
+importances = classifier.feature_importances_
+# print(importances)
+indices = np.argsort(importances)[::-1]
+feature_indices = [ind for ind in indices[:len(importances)]]
+
+# Print the feature ranking
+# print("Feature ranking:")
+
+for f in range(len(importances)):
+    print(f+1, feature_names[feature_indices[f]], importances[indices[f]])
+
+plt.figure(figsize=(15,5))
+plt.title("Feature importances")
+bars = plt.bar(range(len(importances)), importances[indices[:len(importances)]], align="center")
+ticks = plt.xticks(range(len(importances)),feature_names[feature_indices[:]])
+plt.show()
+
+#features importance with ELI5
+perm = PermutationImportance(classifier).fit(x_test_scaled, y_test)
+eli5.show_weights(perm, feature_names = feature_names.tolist())
+display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
+#eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist())
+#display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
 
 
@@ -312,6 +437,58 @@ plt.show()
 # INSERT INTERPRETABILITY
 # ======================================================================================================================
 
+# ====================================================================================================================== 
+# Black Box Models interpretation
+# ====================================================================================================================== 
 
 
+classifier= model_2
+  
+new_x_train = under_over_x_train
+new_y_train = classifier.predict(under_over_x_train)
+    
+print("Decision Tree Explanator")
+    
+inter=interactive(plot_tree,depth=(1,5))
+display(inter)
+    
+# ======================================================================================================================
+# Different Approches deployed to check locally and gloabally
+# ======================================================================================================================
+
+# Local models
+    
+# LIME
+explainer = lime.lime_tabular.LimeTabularExplainer(under_over_x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
+exp = explainer.explain_instance(x_test_scaled[i], classifier.predict_proba, num_features=5)
+exp.show_in_notebook(show_table=True, show_all=False)
+exp.as_pyplot_figure();
+    
+    
+# features importance 
+    
+# features importance model built-in
+importances = classifier.feature_importances_
+# print(importances)
+indices = np.argsort(importances)[::-1]
+feature_indices = [ind for ind in indices[:len(importances)]]
+
+# Print the feature ranking
+# print("Feature ranking:")
+
+for f in range(len(importances)):
+    print(f+1, feature_names[feature_indices[f]], importances[indices[f]])
+
+plt.figure(figsize=(15,5))
+plt.title("Feature importances")
+bars = plt.bar(range(len(importances)), importances[indices[:len(importances)]], align="center")
+ticks = plt.xticks(range(len(importances)),feature_names[feature_indices[:]])
+plt.show()
+
+#features importance with ELI5
+perm = PermutationImportance(classifier).fit(x_test_scaled, y_test)
+eli5.show_weights(perm, feature_names = feature_names.tolist())
+display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
+#eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist())
+#display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
