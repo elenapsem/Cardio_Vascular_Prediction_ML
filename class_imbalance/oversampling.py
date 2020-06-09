@@ -98,7 +98,8 @@ plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
 scale_continuous_columns = ['age', 'height', 'weight', 'ap_hi', 'ap_lo']  # continuous features
 
 t = [('num', MinMaxScaler(), scale_continuous_columns)]
-minmax_transformer = ColumnTransformer(transformers=t)  # use it on pipelines
+# remainder='passthrough': keeps the non transformed columns
+minmax_transformer = ColumnTransformer(transformers=t, remainder='passthrough')  # use it on pipelines
 
 print('\n============================================================================================================')
 
@@ -115,7 +116,7 @@ def precision_recall_auc_score(y_test_valid, y_positive_class_probs):
     return auc_score
 
 
-scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1', 'roc-auc': 'roc_auc',
+scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1_weighted', 'roc-auc': 'roc_auc',
            'precision-recall auc': make_scorer(precision_recall_auc_score, needs_proba=True, greater_is_better=True),
            'g-mean': make_scorer(geometric_mean_score, greater_is_better=True)}
 
@@ -143,7 +144,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nBaseline model + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -176,7 +177,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nRandom oversampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -213,7 +214,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nSMOTE oversampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -250,7 +251,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nBorderlineSMOTE oversampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -287,7 +288,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nSVMSMOTE oversampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -303,7 +304,6 @@ print('\n=======================================================================
 # ======================================================================================================================
 
 adasyn = ADASYN(n_neighbors=100, sampling_strategy='minority', random_state=random_state)
-
 
 # ======================================================================================================================
 
@@ -325,7 +325,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nADASYN oversampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 

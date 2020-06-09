@@ -1,23 +1,27 @@
+import statistics
+import collections
 import numpy as np
 import pandas as pd
-from imblearn.datasets import make_imbalance
-from imblearn.metrics import geometric_mean_score
-from numpy import mean
+from tqdm import tqdm
 import seaborn as sns
-import matplotlib.pyplot as plt
-from sklearn.compose import ColumnTransformer
+from numpy import mean
 from sklearn.svm import SVC
+import matplotlib.pyplot as plt
 from xgboost import XGBClassifier
 from sklearn.utils import resample
 from sklearn.decomposition import PCA
-from imblearn.under_sampling import TomekLinks
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import KFold, cross_validate
+from imblearn.datasets import make_imbalance
+from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import MinMaxScaler
-from imblearn.under_sampling import ClusterCentroids
-from sklearn.metrics import roc_auc_score, confusion_matrix, make_scorer, precision_recall_curve, auc
-from imblearn.over_sampling import SMOTE, BorderlineSMOTE, SVMSMOTE, ADASYN
-from sklearn.model_selection import train_test_split, RepeatedStratifiedKFold, cross_val_score
+from imblearn.metrics import geometric_mean_score
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from imblearn.ensemble import EasyEnsembleClassifier, BalancedRandomForestClassifier
+from imblearn.under_sampling import TomekLinks, EditedNearestNeighbours, RandomUnderSampler
+from imblearn.over_sampling import SMOTE, BorderlineSMOTE, SVMSMOTE, ADASYN, RandomOverSampler
+from sklearn.metrics import roc_auc_score, confusion_matrix, make_scorer, precision_recall_curve, auc, \
+    balanced_accuracy_score, accuracy_score, precision_recall_fscore_support, f1_score
 
 
 # ======================================================================================================================
@@ -62,13 +66,13 @@ def plot_2d_space(X, y, label='Classes'):
 
 
 # ======================================================================================================================
-
+'''
 # Visualize BALANCED DATA
 pca = PCA(n_components=2)
 X_pca = pca.fit_transform(X)
 
 plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
-
+'''
 
 # ======================================================================================================================
 # Make the dataset IMBALANCED (with random undersampling)
@@ -86,13 +90,13 @@ print("AFTER IMBALANCE: ", y.value_counts())
 
 
 # ======================================================================================================================
-
+'''
 # Visualize IMBALANCED DATA
 pca = PCA(n_components=2)
 X_pca = pca.fit_transform(X)
 
 plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
-
+'''
 
 # ======================================================================================================================
 # Scale data
@@ -100,9 +104,13 @@ plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
 
 # Min-Max scaling data
 scale_continuous_columns = ['age', 'height', 'weight', 'ap_hi', 'ap_lo']  # continuous features
+# categorical_columns = ['gender', 'cholesterol', 'gluc', 'smoke', 'alco', 'active']
 
 t = [('num', MinMaxScaler(), scale_continuous_columns)]
-minmax_transformer = ColumnTransformer(transformers=t)  # use it on pipelines
+# remainder='passthrough': keeps the non transformed columns
+minmax_transformer = ColumnTransformer(transformers=t, remainder='passthrough')  # use it on pipelines
+
+print('\n============================================================================================================')
 
 
 # ======================================================================================================================
@@ -117,203 +125,164 @@ def precision_recall_auc_score(y_test_valid, y_positive_class_probs):
     return auc_score
 
 
-scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1', 'roc-auc': 'roc_auc',
-           'precision-recall auc': make_scorer(precision_recall_auc_score, needs_proba=True, greater_is_better=True),
-           'g-mean': make_scorer(geometric_mean_score, greater_is_better=True)}
+# ======================================================================================================================
+
+# Initialize metrics for 10-cross-vailidation (dictionary with key and lists of values)
+accuracy_list = collections.defaultdict(list)
+balanced_accuracy_list = collections.defaultdict(list)
+f1_score_list = collections.defaultdict(list)
+roc_list = collections.defaultdict(list)
+precision_recall_auc_list = collections.defaultdict(list)
+gmean_list = collections.defaultdict(list)
+
+# Set shuffle equals True to randomize your splits on your training data
+kf = KFold(n_splits=10, random_state=random_state, shuffle=True)
+
+# k-fold cross validation
+for train_index, test_index in tqdm(kf.split(X)):
+    x_train, y_train = X.iloc[train_index], y[train_index]
+    x_test, y_test = X.iloc[test_index], y[test_index]
+
+# ======================================================================================================================
+#  OVERSAMLING
+# ======================================================================================================================
+
+    # RANDOM OVERSAMLING with replacement
+    over = RandomOverSampler(random_state=random_state)
+
+    # ADASYN OVERSAMLING
+    adasyn = ADASYN(n_neighbors=100, random_state=random_state)
+
+    oversampling = [['RandomOverSampler', over], ['ADASYN', adasyn]]
 
 
 # ======================================================================================================================
+#  UNDERSAMPLING
+# ======================================================================================================================
 
+    # cut half of the majority class (only for RandomUnderSampler)
+    under_sampling_strategy = {0: int(y_train.value_counts()[0] / 2), 1: y_train.value_counts()[1]}
 
-# setting up testing and training sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20, stratify=y, random_state=27)
+    # Tomek Links UNDERSAMPLING
+    tomek = TomekLinks(sampling_strategy='majority')
 
+    # RANDOM UNDERSAMPLING
+    under = RandomUnderSampler(sampling_strategy=under_sampling_strategy, random_state=random_state)  # reduce the number of examples in the majority class by 50 percent
+
+    # EditedNearestNeighbours UNDERSAMPLING
+    enn = EditedNearestNeighbours(n_neighbors=10, sampling_strategy='majority')
+
+    undersampling = [['TomekLinks', tomek], ['RandomUnderSampler', under], ['EditedNearestNeighbours', enn]]
 
 
 # ======================================================================================================================
-# RANDOM OVERSAMLING with replacement
+# CLASSIFIERS
 # ======================================================================================================================
 
-# upsample minority
-decease_upsampled = resample(decease,
-                             replace=True,  # sample with replacement
-                             n_samples=len(no_decease),  # match number in majority class
-                             random_state=27)  # reproducible results
+    # LogisticRegression
+    clf2 = LogisticRegression(solver="liblinear", C=400, max_iter=300, class_weight="balanced")
 
-# combine majority and upsampled minority
-upsampled = pd.concat([no_decease, decease_upsampled])
+    # RandomForestClassifier - COST-SENSITIVE LEARNING
+    rf_imb_aware_3 = BalancedRandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None)
 
-print("RANDOM OVERSAMPLING: ", upsampled.cardio.value_counts())
+    # EasyEnsembleClassifier
+    eec = EasyEnsembleClassifier(n_estimators=10,
+                                 base_estimator=AdaBoostClassifier(base_estimator=None, n_estimators=10, algorithm='SAMME.R', random_state=random_state),
+                                 warm_start=False, random_state=random_state)
 
-# trying logistic regression again with the balanced dataset
-y_train = upsampled.cardio
-X_train = upsampled.drop('cardio', axis=1)
+    # XGBClassifier
+    # scale_pos_weight: scale the gradient for the positive class, set to inverse of the class distribution (ratio 1:5 -> 5)
+    xgb_imb_aware = XGBClassifier(learning_rate=0.01, n_estimators=1000, max_depth=4, min_child_weight=6, gamma=0,
+                                  subsample=0.8, colsample_bytree=0.8, reg_alpha=0.005, objective='binary:logistic',
+                                  nthread=4, random_state=random_state)
 
-
-# ======================================================================================================================
-# RANDOM UNDERSAMPLING
-# ======================================================================================================================
-
-# downsample majority
-no_decease_downsampled = resample(no_decease,
-                                 replace=False,  # sample without replacement
-                                 n_samples=len(decease),  # match minority n
-                                 random_state=27)  # reproducible results
-
-# combine minority and downsampled majority
-downsampled = pd.concat([no_decease_downsampled, decease])
-
-print("RANDOM UNDERSAMPLING: ", downsampled.cardio.value_counts())
-
-y_train = downsampled.cardio
-X_train = downsampled.drop('cardio', axis=1)
-
-
-
-
-
-
-
-
-# ======================================================================================================================
-# TOMEK LINKS UNDERSAMPLING
-# ======================================================================================================================
-
-tl = TomekLinks(sampling_strategy='majority')
-X_tl, y_tl, id_tl = tl.fit_sample(X_train_imbalanced, y_train_imbalanced)
-
-print('Removed indexes:', id_tl)
-print('DATA???:', X_tl, y_tl)
-
-pca = PCA(n_components=2)
-X_tl_pca = pca.fit_transform(X_tl)
-
-plot_2d_space(X_tl_pca, y_tl, 'Tomek links under-sampling')
-
-
-# ======================================================================================================================
-# Cluster Centroids UNDERSAMPLING
-# ======================================================================================================================
-
-# {0: 10}: parameter ratio, 10 elements from majority class (0), and all minority class (1)
-cc = ClusterCentroids(sampling_strategy={0: 10})
-X_cc, y_cc = cc.fit_sample(X_train_imbalanced, y_train_imbalanced)
-
-pca = PCA(n_components=2)
-X_cc_pca = pca.fit_transform(X_cc)
-plot_2d_space(X_cc_pca, y_cc, 'Cluster Centroids under-sampling')
-
-
-# ======================================================================================================================
-# COST-SENSITIVE LEARNING
-# ======================================================================================================================
-
-rf = RandomForestClassifier(class_weight="balanced")
-
-fit_model = rf.fit(X_train_imbalanced, y_train_imbalanced)
-
-# predict on test set
-rf_pred = rf.predict(X_test)
-
+    predictors = [['LogisticRegression', clf2], ['BalancedRandomForestClassifier', rf_imb_aware_3],
+                  ['EasyEnsembleClassifier', eec], ['XGBClassifier', xgb_imb_aware]]
 
 # ======================================================================================================================
 
-# Train model
-clf_3 = SVC(kernel='linear',
-            class_weight='balanced',  # penalize
-            probability=True)
+    # minmax scaler for continuous features
+    x_train_scaled = minmax_transformer.fit_transform(x_train, y_train)
+    x_test_scaled = minmax_transformer.transform(x_test)
 
-clf_3.fit(X_train_imbalanced, y_train_imbalanced)
+    for under_name, under_sampler in undersampling:  # alternate through undersamplers
+        # UNDER-SAMPLING
+        # print(y_train.value_counts())
+        under_x_train, under_y_train = under_sampler.fit_resample(x_train_scaled, y_train)
+        # print(under_y_train.value_counts())
 
-# Predict on training set
-pred_y_3 = clf_3.predict(X_test)
+        for over_name, over_sampler in oversampling:  # alternate through oversamplers
+            # OVER-SAMPLING
+            majority_class = under_y_train.value_counts()[0]
+            # over-sample 90% of the new difference of majority and minority labels (new = after under-sampling)
+            minority_class = under_y_train.value_counts()[1] + 0.80 * (under_y_train.value_counts()[0] - under_y_train.value_counts()[1])
+            over_sampling_strategy = {0: majority_class,
+                                      1: int(minority_class)}
+            over_sampler.set_params(sampling_strategy=over_sampling_strategy)
+            under_over_x_train, under_over_y_train = over_sampler.fit_resample(under_x_train, under_y_train)
+            # print(under_over_y_train.value_counts())
 
-# What about AUROC?
-prob_y_3 = clf_3.predict_proba(X_test)
-prob_y_3 = [p[1] for p in prob_y_3]
-print(roc_auc_score(y, prob_y_3))
-# 0.5305236678
+            for name, classifier in predictors:  # alternate through classifiers
+                if name == 'XGBClassifier':
+                    # set class imbalance parameter
+                    classifier.set_params(scale_pos_weight=int(under_over_y_train.value_counts()[0] / under_over_y_train.value_counts()[1]))
 
+                # fit classifier
+                model = classifier.fit(under_over_x_train, under_over_y_train)
+                y_pred = classifier.predict(x_test_scaled)
+                y_pred_proba = classifier.predict_proba(x_test_scaled)[:, 1]  # get only the probabilities for the positive class
 
-# ======================================================================================================================
-# TRAIN ML MODEL - USE TREES for imbalanced data
-# ======================================================================================================================
+                # evaluate pipeline
+                #print("\n", under_name, " + ", over_name, " + ", name,  ":")
+                method = under_name, " + ", over_name, " + ", name
 
-# train model
-rfc = RandomForestClassifier(n_estimators=10)
-fit_model = rfc.fit(X_train_imbalanced, y_train_imbalanced)
+                accuracy_list[method].append(accuracy_score(y_test, y_pred))
+                balanced_accuracy_list[method].append(balanced_accuracy_score(y_test, y_pred))
+                f1_score_list[method].append(f1_score(y_test, y_pred, average='weighted'))
+                roc_list[method].append(roc_auc_score(y_test, y_pred_proba))
+                precision_recall_auc_list[method].append(precision_recall_auc_score(y_test, y_pred_proba))
+                gmean_list[method].append(geometric_mean_score(y_test, y_pred, average='weighted'))
 
-# predict on test set
-rfc_pred = rfc.predict(X_test)
+                '''
+                print(accuracy_score(y_test, y_pred))
+                print(balanced_accuracy_score(y_test, y_pred))
+                print(f1_score(y_test, y_pred, average='weighted'))
+                print(roc_auc_score(y_test, y_pred_proba))
+                print(precision_recall_auc_score(y_test, y_pred_proba))
+                print(geometric_mean_score(y_test, y_pred))
+                '''
 
-
-# ======================================================================================================================
-# AUC-ROC (need proba)
-# ======================================================================================================================
-
-# Predict class probabilities
-prob_y_2 = rfc.predict_proba(X_test)
-
-# Keep only the positive class
-prob_y_2 = [p[1] for p in prob_y_2]
-
-print(roc_auc_score(y, prob_y_2))
-
-
-# ======================================================================================================================
-# SMOTE and Random Undersampling
-# define pipeline
-from imblearn.under_sampling import RandomUnderSampler
-from imblearn.pipeline import Pipeline
-
-# values to evaluate
-k_values = [1, 2, 3, 4, 5, 6, 7]
-for k in k_values:
-    # ==================================================================================================================
-    # transform the dataset
-    over = BorderlineSMOTE()
-    # ==================================================================================================================
-    over = SVMSMOTE()
-    # ==================================================================================================================
-    oversample = ADASYN()
-    # ==================================================================================================================
-    # oversample the minority class to have 50 percent examples of the majority class
-    over = SMOTE(sampling_strategy=0.5, k_neighbors=k, random_state=27)
-    under = RandomUnderSampler(sampling_strategy=0.5)  # reduce the number of examples in the majority class by 50 percent
-    steps = [('minmax', minmax_transformer), ('over', over), ('under', under)]  # minmax scaler for continuous features
-    #steps = [('over', over), ('under', under), ('model', DecisionTreeClassifier())]
-    pipeline = Pipeline(steps=steps)
-    # transform the dataset
-    X, y = pipeline.fit_resample(X_train_imbalanced, y_train_imbalanced)
-
-    # ==================================================================================================================
-    # define model
-    model = DecisionTreeClassifier()
-    # ==================================================================================================================
-    model = XGBClassifier()
-    # ==================================================================================================================
-
-    # evaluate pipeline
-    cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
-    scores = cross_val_score(pipeline, X_train_imbalanced, y_train_imbalanced, scoring='roc_auc', cv=cv, n_jobs=-1)
-    print('Mean ROC AUC: %.3f' % mean(scores))
-    print('> k=%d, Mean ROC AUC: %.3f' % (k, mean(scores)))
+    #print('\n========================================================================================================')
 
 
-    # ==================================================================================================================
-    # Confusion Matrix
-    # ==================================================================================================================
+# Print average of metrics
+for name_key in accuracy_list:  # iterate through all methods
+    print('\n========================================================================================================')
+    print(name_key)
+    print("Average accuracy: %.2f (+/- %.2f)" % (statistics.mean(accuracy_list[name_key]), statistics.stdev(accuracy_list[name_key])))
+    print("Average balanced_accuracy: %.2f (+/- %.2f)" % (statistics.mean(balanced_accuracy_list[name_key]), statistics.stdev(balanced_accuracy_list[name_key])))
+    print("Average weighted f1_score: %.2f (+/- %.2f)" % (statistics.mean(f1_score_list[name_key]), statistics.stdev(f1_score_list[name_key])))
+    print("Average roc-auc: %.2f (+/- %.2f)" % (statistics.mean(roc_list[name_key]), statistics.stdev(roc_list[name_key])))
+    print("Average precision_recall_auc: %.2f (+/- %.2f)" % (statistics.mean(precision_recall_auc_list[name_key]), statistics.stdev(precision_recall_auc_list[name_key])))
+    print("Average g-mean: %.2f (+/- %.2f)" % (statistics.mean(gmean_list[name_key]), statistics.stdev(gmean_list[name_key])))
 
-    conf_mat = confusion_matrix(y_true=y_test, y_pred=y_pred)
-    print('Confusion matrix:\n', conf_mat)
 
-    labels = ['Class 0', 'Class 1']
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    cax = ax.matshow(conf_mat, cmap=plt.cm.Blues)
-    fig.colorbar(cax)
-    ax.set_xticklabels([''] + labels)
-    ax.set_yticklabels([''] + labels)
-    plt.xlabel('Predicted')
-    plt.ylabel('Expected')
-    plt.show()
+'''
+# ==================================================================================================================
+# Confusion Matrix
+# ==================================================================================================================
+
+conf_mat = confusion_matrix(y_true=y_test, y_pred=y_pred)
+print('Confusion matrix:\n', conf_mat)
+
+labels = ['Class 0', 'Class 1']
+fig = plt.figure()
+ax = fig.add_subplot(111)
+cax = ax.matshow(conf_mat, cmap=plt.cm.Blues)
+fig.colorbar(cax)
+ax.set_xticklabels([''] + labels)
+ax.set_yticklabels([''] + labels)
+plt.xlabel('Predicted')
+plt.ylabel('Expected')
+plt.show()
+'''

@@ -99,7 +99,8 @@ plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
 scale_continuous_columns = ['age', 'height', 'weight', 'ap_hi', 'ap_lo']  # continuous features
 
 t = [('num', MinMaxScaler(), scale_continuous_columns)]
-minmax_transformer = ColumnTransformer(transformers=t)  # use it on pipelines
+# remainder='passthrough': keeps the non transformed columns
+minmax_transformer = ColumnTransformer(transformers=t, remainder='passthrough')  # use it on pipelines
 
 
 # ======================================================================================================================
@@ -114,7 +115,7 @@ def precision_recall_auc_score(y_test_valid, y_positive_class_probs):
     return auc_score
 
 
-scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1', 'roc auc': 'roc_auc',
+scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1_weighted', 'roc auc': 'roc_auc',
            'precision-recall auc': make_scorer(precision_recall_auc_score, needs_proba=True, greater_is_better=True),
            'g-mean': make_scorer(geometric_mean_score, greater_is_better=True)}
 
@@ -143,7 +144,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nBaseline model + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -176,7 +177,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nRandom undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -214,7 +215,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nTomek Links undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -252,7 +253,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nNearMiss 1 undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -289,7 +290,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nNearMiss 2 undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -327,7 +328,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nNearMiss 3 undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -365,7 +366,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nEditedNearestNeighbours undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -402,7 +403,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nRepeatedEditedNearestNeighbours undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -445,7 +446,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nOneSidedSelection undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -482,7 +483,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nNeighbourhoodCleaningRule undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -519,7 +520,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nCluster Centroids undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=2, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=2, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -556,7 +557,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nCondensedNearestNeighbour undersampling + ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=2, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=2, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 

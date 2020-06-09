@@ -98,7 +98,8 @@ plot_2d_space(X_pca, y, 'Imbalanced dataset (2 PCA components)')
 scale_continuous_columns = ['age', 'height', 'weight', 'ap_hi', 'ap_lo']  # continuous features
 
 t = [('num', MinMaxScaler(), scale_continuous_columns)]
-minmax_transformer = ColumnTransformer(transformers=t)  # use it on pipelines
+# remainder='passthrough': keeps the non transformed columns
+minmax_transformer = ColumnTransformer(transformers=t, remainder='passthrough')  # use it on pipelines
 
 print('\n============================================================================================================')
 
@@ -115,7 +116,7 @@ def precision_recall_auc_score(y_test_valid, y_positive_class_probs):
     return auc_score
 
 
-scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1', 'roc-auc': 'roc_auc',
+scoring = {'accuracy': 'accuracy', 'balanced-accuracy': 'balanced_accuracy', 'f1-score': 'f1_weighted', 'roc-auc': 'roc_auc',
            'precision-recall auc': make_scorer(precision_recall_auc_score, needs_proba=True, greater_is_better=True),
            'g-mean': make_scorer(geometric_mean_score, greater_is_better=True)}
 
@@ -142,7 +143,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nLogisticRegression - ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -191,7 +192,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nSVM - ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=2, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -218,7 +219,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nDecisionTreeClassifier - ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -230,16 +231,20 @@ print('\n=======================================================================
 # ======================================================================================================================
 
 # Class imbalance unaware
-rf_imb_unaware = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None)
+rf_imb_unaware = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None,
+                                        bootstrap=True, oob_score=False)
 
 # Class imbalance aware
-rf_imb_aware = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None, class_weight="balanced")
+rf_imb_aware = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None,
+                                      bootstrap=True, oob_score=False, class_weight="balanced")
 
 # Class imbalance aware
-rf_imb_aware_2 = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None, class_weight='balanced_subsample')  # Bootstrap Class Weighting
+rf_imb_aware_2 = RandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None,
+                                        bootstrap=True, oob_score=False, class_weight='balanced_subsample')  # Bootstrap Class Weighting
 
 # Class imbalance aware
-rf_imb_aware_3 = BalancedRandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None)
+rf_imb_aware_3 = BalancedRandomForestClassifier(n_estimators=100, criterion='gini', max_features='log2', max_depth=None,
+                                                bootstrap=True, oob_score=False)
 
 # ======================================================================================================================
 
@@ -252,7 +257,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nRandomForestClassifier\n", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -287,7 +292,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nXGBClassifier - ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -324,7 +329,7 @@ for name, classifier in predictors:
 
     # evaluate pipeline
     print("\nBagging - ", name, ":")
-    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+    scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
     for s in scoring:
         print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
@@ -347,7 +352,7 @@ pipeline = Pipeline(steps=steps)
 
 # evaluate pipeline
 print("\nEasyEnsembleClassifier:")
-scores = cross_validate(pipeline, X, y, scoring=scoring, cv=3, return_train_score=False)
+scores = cross_validate(pipeline, X, y, scoring=scoring, cv=10, return_train_score=False, return_estimator=False)
 for s in scoring:
     print("%s: %.2f (+/- %.2f)" % (s, scores["test_" + s].mean(), scores["test_" + s].std()))
 
