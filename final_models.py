@@ -1,4 +1,4 @@
-# installations, if not already there
+# installations, if not already performed
 #!pip install lime
 #!pip install eli5
 #!pip install shap
@@ -39,16 +39,12 @@ from IPython.display import SVG
 from IPython.display import display
 from ipywidgets import interactive
 from graphviz import Source
-# PDP
-from pdpbox import pdp, get_dataset, info_plots
-# LIME
-import lime.lime_tabular
+from pdpbox import pdp, get_dataset, info_plots # PDP
+import lime.lime_tabular # LIME
 from lime.explanation import Explanation
-# ELI5
-import eli5
+import eli5 # ELI5
 from eli5.sklearn import PermutationImportance
-# SHAP
-import shap
+import shap # SHAP
 %matplotlib inline
 
 # ======================================================================================================================
@@ -273,16 +269,13 @@ plt.show()
 # ======================================================================================================================
 # INSERT INTERPRETABILITY
 # ======================================================================================================================
-
 # ====================================================================================================================== 
-# Black Box Models interpretation
+# Black Box Model interpretation
 # ====================================================================================================================== 
-
-# reuse the https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
+# reuse part of the https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
 # ======================================================================================================================
 # Plot Tree Function
 # ======================================================================================================================
-
 def plot_tree(depth):
     estimator = DecisionTreeClassifier(random_state = 0,criterion = 'gini', max_depth = depth)
     estimator.fit(new_x_train, new_y_train)
@@ -294,10 +287,10 @@ def plot_tree(depth):
     return estimator
 
 
-i = np.random.randint(0, x_test.shape[0]) # test for random instance
+i = np.random.randint(0, x_test_scaled.shape[0]) # test for random instance
 
 #under_over_x_train = under_over_x_train.values
-x_test = x_test.values
+#x_test = x_test.values
 #under_over_y_train = under_over_y_train.values
 y_test = y_test.values
 
@@ -310,22 +303,20 @@ numerical_features= ["age", "height", "weight", "ap_hi", "ap_lo"]
 # if a feature has 5 or less unique values then treat it as categorical
 categorical_features = np.argwhere(np.array([len(set(under_over_x_train[:,x])) for x in range(under_over_x_train.shape[1])]) <= 5).flatten()
 
-classifier= model_1
+classifier= model_1 #classifier assignment
 
 new_x_train = under_over_x_train
 new_y_train = classifier.predict(under_over_x_train)
     
 print("Decision Tree Explanator")
-    
 inter=interactive(plot_tree,depth=(1,5))
 display(inter)
     
 # ======================================================================================================================
-# Different Approches deployed to check locally and globally
+# Different Approches deployed to check results locally and globally
 # ======================================================================================================================
 
-# Local models
-  
+# Local models  
 # LIME
 explainer = lime.lime_tabular.LimeTabularExplainer(under_over_x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
 exp = explainer.explain_instance(x_test_scaled[i], classifier.predict_proba, num_features=5)
@@ -334,15 +325,14 @@ exp.as_pyplot_figure
     
 # features importance 
     
-# features importance model built-in
+# model built-in features importance
 importances = classifier.feature_importances_
 # print(importances)
 indices = np.argsort(importances)[::-1]
 feature_indices = [ind for ind in indices[:len(importances)]]
 
 # Print the feature ranking
-# print("Feature ranking:")
-
+print("Feature ranking:")
 for f in range(len(importances)):
     print(f+1, feature_names[feature_indices[f]], importances[indices[f]])
 
@@ -352,7 +342,7 @@ bars = plt.bar(range(len(importances)), importances[indices[:len(importances)]],
 ticks = plt.xticks(range(len(importances)),feature_names[feature_indices[:]])
 plt.show()
 
-#features importance with ELI5
+# features importance with ELI5
 perm = PermutationImportance(classifier).fit(x_test_scaled, y_test)
 eli5.show_weights(perm, feature_names = feature_names.tolist())
 display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
@@ -360,13 +350,12 @@ display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 #display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
 # SHAP for evaluating variable importance
-  
 data= shap.kmeans(under_over_x_train, 3) 
 explainer = shap.KernelExplainer(classifier.predict, data)
 shap_values = explainer.shap_values(under_over_x_train, nsamples=100)
 
 # show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
-shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
+shap.force_plot(explainer.expected_value, shap_values[i], x_test_scaled[i], feature_names=feature_names)
 plt.savefig('SHAP_feature_.png', bbox_inches="tight")
 shap.summary_plot(shap_values, under_over_x_train, show=False, feature_names=feature_names)
 plt.savefig('SHAP_Summary_.png', bbox_inches="tight")
@@ -429,28 +418,24 @@ plt.show()
 # ======================================================================================================================
 # INSERT INTERPRETABILITY
 # ======================================================================================================================
-
 # ====================================================================================================================== 
-# Black Box Models interpretation
+# Black Box Model interpretation
 # ====================================================================================================================== 
 
-
-classifier= model_2
+classifier= model_2 #classifier assignment
   
 new_x_train = under_over_x_train
 new_y_train = classifier.predict(under_over_x_train)
     
 print("Decision Tree Explanator")
-    
 inter=interactive(plot_tree,depth=(1,5))
 display(inter)
     
 # ======================================================================================================================
-# Different Approches deployed to check locally and gloabally
+# Different Approches deployed to check results locally and gloabally
 # ======================================================================================================================
 
 # Local models
-    
 # LIME
 explainer = lime.lime_tabular.LimeTabularExplainer(under_over_x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
 exp = explainer.explain_instance(x_test_scaled[i], classifier.predict_proba, num_features=5)
@@ -460,7 +445,7 @@ exp.as_pyplot_figure();
     
 # features importance 
     
-# features importance model built-in
+#  model built-in features importance
 importances = classifier.feature_importances_
 # print(importances)
 indices = np.argsort(importances)[::-1]
@@ -478,7 +463,7 @@ bars = plt.bar(range(len(importances)), importances[indices[:len(importances)]],
 ticks = plt.xticks(range(len(importances)),feature_names[feature_indices[:]])
 plt.show()
 
-#features importance with ELI5
+# features importance with ELI5
 perm = PermutationImportance(classifier).fit(x_test_scaled, y_test)
 eli5.show_weights(perm, feature_names = feature_names.tolist())
 display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
@@ -486,13 +471,12 @@ display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 #display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
 # SHAP for evaluating variable importance
-  
 data= shap.kmeans(under_over_x_train, 3) 
 explainer = shap.KernelExplainer(classifier.predict, data)
 shap_values = explainer.shap_values(under_over_x_train, nsamples=100)
 
 # show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
-shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
+shap.force_plot(explainer.expected_value, shap_values[i], x_test_scaled[i], feature_names=feature_names)
 plt.savefig('SHAP_feature_.png', bbox_inches="tight")
 shap.summary_plot(shap_values, under_over_x_train, show=False, feature_names=feature_names)
 plt.savefig('SHAP_Summary_.png', bbox_inches="tight")
