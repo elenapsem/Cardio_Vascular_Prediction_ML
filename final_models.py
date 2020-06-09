@@ -279,7 +279,7 @@ plt.show()
 def plot_tree(depth):
     estimator = DecisionTreeClassifier(random_state = 0,criterion = 'gini', max_depth = depth)
     estimator.fit(new_x_train, new_y_train)
-    graph = Source(export_graphviz(estimator, out_file=None, feature_names=feature_names, filled = True))
+    graph = Source(export_graphviz(estimator, out_file=None, feature_names=feature_names,  class_names=labels, precision=5, filled = True))
     print("Fidelity",accuracy_score(y_pred, estimator.predict(x_test_scaled)))
     print("Accuracy in new data")
     print(accuracy_score(y_test, estimator.predict(x_test_scaled)))
@@ -294,8 +294,7 @@ i = np.random.randint(0, x_test_scaled.shape[0]) # test for random instance
 #under_over_y_train = under_over_y_train.values
 y_test = y_test.values
 
-
-# assign features name
+# assign features names
 feature_names = df.columns.drop(['cardio'])
 
 numerical_features= ["age", "height", "weight", "ap_hi", "ap_lo"]
@@ -303,8 +302,10 @@ numerical_features= ["age", "height", "weight", "ap_hi", "ap_lo"]
 # if a feature has 5 or less unique values then treat it as categorical
 categorical_features = np.argwhere(np.array([len(set(under_over_x_train[:,x])) for x in range(under_over_x_train.shape[1])]) <= 5).flatten()
 
+# Train as a black box with the preselected classifier
 classifier= model_1 #classifier assignment
 
+# Train decision tree as white box model to interpret the results 
 new_x_train = under_over_x_train
 new_y_train = classifier.predict(under_over_x_train)
     
@@ -422,6 +423,7 @@ plt.show()
 # Black Box Model interpretation
 # ====================================================================================================================== 
 
+# Train as a black box with the preselected classifier
 classifier= model_2 #classifier assignment
   
 new_x_train = under_over_x_train
@@ -477,6 +479,6 @@ shap_values = explainer.shap_values(under_over_x_train, nsamples=100)
 
 # show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
 shap.force_plot(explainer.expected_value, shap_values[i], x_test_scaled[i], feature_names=feature_names)
-plt.savefig('SHAP_feature_.png', bbox_inches="tight")
+plt.savefig('SHAP_feature.png', bbox_inches="tight")
 shap.summary_plot(shap_values, under_over_x_train, show=False, feature_names=feature_names)
-plt.savefig('SHAP_Summary_.png', bbox_inches="tight")
+plt.savefig('SHAP_Summary.png', bbox_inches="tight")
