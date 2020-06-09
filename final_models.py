@@ -1,15 +1,27 @@
+# installations, if not already there
+#!pip install lime
+#!pip install eli5
+#!pip install shap
+#!pip install pdpbox
+#!pip install xgboost 
+
+import os
+os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
+import graphviz
 import statistics
 import collections
 import numpy as np
 import pandas as pd
+import xgboost
 from tqdm import tqdm
 import seaborn as sns
 from numpy import mean
 from sklearn.svm import SVC
 import matplotlib.pyplot as plt
-from xgboost import XGBClassifier
+from xgboost import XGBClassifier, plot_importance
 from sklearn.utils import resample
 from sklearn.decomposition import PCA
+from sklearn import datasets,model_selection
 from sklearn.model_selection import KFold, cross_validate, train_test_split
 from imblearn.datasets import make_imbalance
 from sklearn.compose import ColumnTransformer
@@ -22,32 +34,11 @@ from imblearn.under_sampling import TomekLinks, EditedNearestNeighbours, RandomU
 from imblearn.over_sampling import SMOTE, BorderlineSMOTE, SVMSMOTE, ADASYN, RandomOverSampler
 from sklearn.metrics import roc_auc_score, confusion_matrix, make_scorer, precision_recall_curve, auc, \
     balanced_accuracy_score, accuracy_score, precision_recall_fscore_support, f1_score
-
-
-# ======================================================================================================================
-# INTERPRETABILITY
-# ======================================================================================================================
-
-# installations, if not already there
-#!pip install lime
-#!pip install eli5
-#!pip install shap
-#!pip install pdpbox
-#!pip install xgboost 
-# imports
-import xgboost
-from sklearn import datasets,model_selection
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from xgboost import XGBClassifier, plot_importance
 from IPython.display import SVG
 from IPython.display import display
 from ipywidgets import interactive
 from graphviz import Source
-import os
-os.environ["PATH"] += os.pathsep + 'C:/Program Files (x86)/Graphviz2.38/bin/'
-import graphviz
-
 # PDP
 from pdpbox import pdp, get_dataset, info_plots
 # LIME
@@ -58,14 +49,7 @@ import eli5
 from eli5.sklearn import PermutationImportance
 # SHAP
 import shap
-
 %matplotlib inline
-
-# ======================================================================================================================
-# INTERPRETABILITY
-# ======================================================================================================================
-
-
 
 # ======================================================================================================================
 
@@ -375,8 +359,17 @@ display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 #eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist())
 #display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
+# SHAP for evaluating variable importance
+  
+data= shap.kmeans(under_over_x_train, 3) 
+explainer = shap.KernelExplainer(classifier.predict, data)
+shap_values = explainer.shap_values(under_over_x_train, nsamples=100)
 
-
+# show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
+shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
+plt.savefig('SHAP_feature_.png', bbox_inches="tight")
+shap.summary_plot(shap_values, under_over_x_train, show=False, feature_names=feature_names)
+plt.savefig('SHAP_Summary_.png', bbox_inches="tight")
 
 # ======================================================================================================================
 # RandomUnderSampler + RandomOverSampler + XGBClassifier
@@ -492,3 +485,14 @@ display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 #eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist())
 #display( eli5.show_prediction(classifier, x_test_scaled[i], show_feature_values=True, feature_names=feature_names.tolist()))
 
+# SHAP for evaluating variable importance
+  
+data= shap.kmeans(under_over_x_train, 3) 
+explainer = shap.KernelExplainer(classifier.predict, data)
+shap_values = explainer.shap_values(under_over_x_train, nsamples=100)
+
+# show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
+shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
+plt.savefig('SHAP_feature_.png', bbox_inches="tight")
+shap.summary_plot(shap_values, under_over_x_train, show=False, feature_names=feature_names)
+plt.savefig('SHAP_Summary_.png', bbox_inches="tight")
