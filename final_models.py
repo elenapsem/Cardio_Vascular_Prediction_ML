@@ -35,8 +35,7 @@ from imblearn.over_sampling import SMOTE, BorderlineSMOTE, SVMSMOTE, ADASYN, Ran
 from sklearn.metrics import roc_auc_score, confusion_matrix, make_scorer, precision_recall_curve, auc, \
     balanced_accuracy_score, accuracy_score, precision_recall_fscore_support, f1_score
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from IPython.display import SVG
-from IPython.display import display
+from IPython.display import SVG, display
 from ipywidgets import interactive
 from graphviz import Source
 from pdpbox import pdp, get_dataset, info_plots # PDP
@@ -279,7 +278,7 @@ plt.show()
 def plot_tree(depth):
     estimator = DecisionTreeClassifier(random_state = 0,criterion = 'gini', max_depth = depth)
     estimator.fit(new_x_train, new_y_train)
-    graph = Source(export_graphviz(estimator, out_file=None, feature_names=feature_names,  class_names=labels, precision=5, filled = True))
+    graph = Source(export_graphviz(estimator, out_file=None, feature_names=feature_names,  class_names=labels, precision=7, filled = True))
     print("Fidelity",accuracy_score(y_pred, estimator.predict(x_test_scaled)))
     print("Accuracy in new data")
     print(accuracy_score(y_test, estimator.predict(x_test_scaled)))
@@ -309,7 +308,7 @@ classifier= model_1 #classifier assignment
 new_x_train = under_over_x_train
 new_y_train = classifier.predict(under_over_x_train)
     
-print("Decision Tree Explanator")
+print("Explain with Decision Tree")
 inter=interactive(plot_tree,depth=(1,5))
 display(inter)
     
@@ -429,7 +428,7 @@ classifier= model_2 #classifier assignment
 new_x_train = under_over_x_train
 new_y_train = classifier.predict(under_over_x_train)
     
-print("Decision Tree Explanator")
+print("Explain with Decision Tree")
 inter=interactive(plot_tree,depth=(1,5))
 display(inter)
     
@@ -444,7 +443,6 @@ exp = explainer.explain_instance(x_test_scaled[i], classifier.predict_proba, num
 exp.show_in_notebook(show_table=True, show_all=False)
 exp.as_pyplot_figure();
     
-    
 # features importance 
     
 #  model built-in features importance
@@ -454,8 +452,7 @@ indices = np.argsort(importances)[::-1]
 feature_indices = [ind for ind in indices[:len(importances)]]
 
 # Print the feature ranking
-# print("Feature ranking:")
-
+print("Feature ranking:")
 for f in range(len(importances)):
     print(f+1, feature_names[feature_indices[f]], importances[indices[f]])
 
