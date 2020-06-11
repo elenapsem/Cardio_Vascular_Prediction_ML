@@ -37,15 +37,12 @@ import graphviz
 
 # PDP
 from pdpbox import pdp, get_dataset, info_plots
-
 # LIME
 import lime.lime_tabular
 from lime.explanation import Explanation
-
 # ELI5
 import eli5
 from eli5.sklearn import PermutationImportance
-
 # SHAP
 import shap
 
@@ -187,7 +184,6 @@ for name, classifier in predictors:
         
         
     # SHAP for evaluating variable importance
-  
     data= shap.kmeans(x_train, 3) 
     explainer = shap.KernelExplainer(classifier.predict, data)
     shap_values = explainer.shap_values(x_train, nsamples=100)
