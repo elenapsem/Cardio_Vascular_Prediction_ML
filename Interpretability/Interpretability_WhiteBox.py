@@ -4,10 +4,9 @@
 # Credits for Logistic Regression Model: https://colab.research.google.com/drive/1PuXCVSS4jjK3psMu7pwNCTlsmnIlVQ9T#scrollTo=CzY2OYJN9krH code
 
 # installations, if not already there
-#!pip install lime
+#!pip install IPython
 #!pip install eli5
-#!pip install shap
-#!pip install pdpbox
+
 
 # imports
 import pandas as pd
@@ -22,20 +21,8 @@ from IPython.display import SVG
 from IPython.display import display
 import matplotlib.pyplot as plt
 from ipywidgets import interactive
-
-# PDP
-from pdpbox import pdp, get_dataset, info_plots
-
-# LIME
-import lime.lime_tabular
-from lime.explanation import Explanation
-
-# ELI5
 import eli5
 from eli5.sklearn import PermutationImportance
-
-# SHAP
-import shap
 
 
 # ======================================================================================================================
@@ -91,6 +78,7 @@ print("Accuracy in Test Set",accuracy_score(y_test, predicted_test))
               
 # ======================================================================================================================
 # Features importance
+# ======================================================================================================================
 
 weights = model.coef_
 model_weights = pd.DataFrame({ 'features': list(feature_names),'weights': list(weights[0])})
@@ -130,59 +118,13 @@ def plot_sensor(instance):
 inter=interactive(plot_sensor, instance=i)
 display(inter)
     
-
               
 # ======================================================================================================================
-# Different Approches
-
               
-# Local models
+# features importance 
 
-# LIME
-
-explainer = lime.lime_tabular.LimeTabularExplainer(x_train, feature_names=feature_names, class_names=[0, 1],categorical_features=categorical_features, discretize_continuous=True)
-exp = explainer.explain_instance(x_test[i], model.predict_proba, num_features=5)
-exp.show_in_notebook(show_table=True, show_all=False)
-exp.as_pyplot_figure();
-
-%matplotlib inline
-fig = exp.as_pyplot_figure();
-
-
-# feature importance 
-
-#feature importance with ELI5
+#features importance with ELI5
 perm = PermutationImportance(model).fit(x_test, y_test)
 eli5.show_weights(perm, feature_names = feature_names.tolist())
 display(eli5.show_weights(perm, feature_names = feature_names.tolist()))
 
-#feature importance with the partial dependence plot PDP 
-
-
-#feature cholesterol
-pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='cholesterol')
-display(pdp.pdp_plot(pdp_goals, 'cholesterol'))
-plt.show()
-
-#feature ap_hi
-pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='ap_hi')
-display(pdp.pdp_plot(pdp_goals, 'ap_hi'))
-plt.show()
-
-#feature active
-pdp_goals = pdp.pdp_isolate(model=model, dataset=df, model_features=feature_names, feature='active')
-display(pdp.pdp_plot(pdp_goals, 'active'))
-plt.show()
-
-
-# SHAP for evaluating variable importance
-
-data= shap.kmeans(x_train, 3) 
-explainer = shap.KernelExplainer(model.predict, data)
-shap_values = explainer.shap_values(x_train, nsamples=100)
-
-# show how each feature contributes to shifting the prediction from the base value to the output value of the model either by decreasing or increasing the probability of our class.
-shap.force_plot(explainer.expected_value, shap_values[i], x_test[i], feature_names=feature_names)
-plt.savefig('SHAP_feature.png', bbox_inches="tight")
-shap.summary_plot(shap_values, x_train, show=False, feature_names=feature_names)
-plt.savefig('SHAP_Summary.png', bbox_inches="tight")
