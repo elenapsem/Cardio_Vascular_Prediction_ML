@@ -1,2 +1,2 @@
 # Cardio_Vascular_Prediction_ML
-Build an ML system that concerns at least 3 of the following 7 topics we discussed in class.
+Build an ML system for Predicting Cardio_Vascular_disease with Active Learning, Class Imbalance and Intrepretability.
